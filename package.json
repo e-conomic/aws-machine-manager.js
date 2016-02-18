@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.0.15",
-    "aws-sdk-promise": "git+ssh://git@github.com:gaggle/aws-sdk-promise",
+    "aws-sdk-promise": "gaggle/aws-sdk-promise",
     "lodash": "^4.2.0",
     "mongoose": "4.1.7",
     "node-custom-errors": "^0.1.5",
