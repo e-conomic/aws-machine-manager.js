@@ -1,0 +1,11 @@
+{
+  "name": "aws-machine-manager.js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Jon Lauridsen",
+  "scripts": {
+    "test": "mocha",
+    "coverage": "istanbul cover --dir ./.coverage _mocha --include-all-sources -- -R spec",
+    "coveralls": "istanbul cover --dir ./.coverage _mocha --include-all-sources --report lcovonly -- -R spec && cat ./.coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./.coverage"
+  }
+}
