@@ -7,5 +7,28 @@
     "test": "mocha",
     "coverage": "istanbul cover --dir ./.coverage _mocha --include-all-sources -- -R spec",
     "coveralls": "istanbul cover --dir ./.coverage _mocha --include-all-sources --report lcovonly -- -R spec && cat ./.coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./.coverage"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.0.15",
+    "aws-sdk-promise": "git+ssh://git@github.com:gaggle/aws-sdk-promise",
+    "lodash": "^4.2.0",
+    "mongoose": "4.1.7",
+    "node-custom-errors": "^0.1.5",
+    "pem-parser": "gaggle/pem-parser",
+    "q": "^1.4.1",
+    "shortid": "^2.2.4",
+    "ssh2": "^0.4.13",
+    "ursa": "^0.9.1",
+    "validate.js": "^0.9.0"
+  },
+  "devDependencies": {
+    "coveralls": "^2.11.6",
+    "istanbul": "^0.4.2",
+    "mocha": "^2.4.5",
+    "mocha-lcov-reporter": "^1.1.0",
+    "mocked-ec2.js": "e-conomic/mocked-ec2.js",
+    "mockgoose": "^4.0.1",
+    "must": "^0.13.1",
+    "sinon": "^1.17.3"
   }
 }
