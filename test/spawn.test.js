@@ -129,6 +129,15 @@ describe("lib/spawn", function () {
           })
       })
 
+      it("should set keyname", function () {
+        M.settings.ec2.keyName = "keyName"
+        return M.spawn({name: "exists"})
+          .then(function () {
+            sinon.assert.calledWithMatch(stubs.runInstances,
+                                         {KeyName: "keyName"})
+          })
+      })
+
       it("should support missing instance", function () {
         awsStub(stubs.terminateInstances, new Error())
         return M.spawn({name: "exists"})

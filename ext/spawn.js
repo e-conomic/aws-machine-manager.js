@@ -45,7 +45,7 @@ Manager.spawn = function (opts, userData) {
           var payload = {
             ImageId: self.settings.ec2.ami,
             InstanceType: self.settings.ec2.type,
-            KeyName: self.settings.keyName,
+            KeyName: self.settings.ec2.keyName,
             MinCount: self.settings.ec2.min,
             MaxCount: self.settings.ec2.max
           }
