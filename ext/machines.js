@@ -55,6 +55,7 @@ Manager.updateMachine = function (name, opts) {
   var self = this
   return self.getMachine(name)
     .then(function (obj) {
+      opts._updated = new Date()
       return obj.update(opts, {runValidators: true})
         .then(function () {
           return self.getMachineById(obj.id)
