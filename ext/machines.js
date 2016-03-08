@@ -72,6 +72,7 @@ Manager.machineExists = function (name) {
 
 var enhanceObj = function (ec2, obj) {
   obj.getReservations = function () {
+    if(!obj.instanceId) throw new exc.InstanceError("No instanceId")
     return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
       .then(function (body) {
         return body.data.Reservations

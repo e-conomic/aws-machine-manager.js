@@ -90,7 +90,7 @@ describe("lib/machines", function () {
           )
         }
 
-        return db.Machine.insert([{name: "foo"}])
+        return db.Machine.insert([{name: "foo", instanceId: "1"}])
       })
 
       it("should expose status", function () {
@@ -119,6 +119,17 @@ describe("lib/machines", function () {
             return obj.getInst()
           })
           .must.reject.with.error("More than one instance")
+      })
+
+      it("should reject if not linked to instance", function () {
+        return db.Machine.insert([{name: "bar", instanceId: undefined}])
+          .then(function () {
+            return M.getMachine("bar")
+              .then(function (obj) {
+                return obj.getInst()
+              })
+              .must.reject.with.error("No instanceId")
+          })
       })
     })
   })
@@ -166,7 +177,7 @@ describe("lib/machines", function () {
           )
         }
 
-        return db.Machine.insert([{_id: "id", name: "foo"}])
+        return db.Machine.insert([{_id: "id", name: "foo", instanceId: "1"}])
       })
 
       it("should expose status", function () {
