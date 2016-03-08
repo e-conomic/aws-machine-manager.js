@@ -48,8 +48,7 @@ Manager.terminate = function (name, opts) {
       return self.ec2.terminateInstances({InstanceIds: [obj.instanceId]})
         .promise()
         .catch(function (err) {
-          if (opts.strict === false &&
-              err.name === "InvalidInstanceID.NotFound") return
+          if (opts.strict === false) return
           throw err
         })
         .then(function () {

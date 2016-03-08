@@ -120,5 +120,14 @@ describe("lib/commands", function () {
         })
         .must.resolve.to.eql([])
     })
+
+    it("should still delete machine if strict is disabled", function () {
+      awsStub(stub, new Error("some error"))
+      return M.terminate("foo", {strict: false})
+        .then(function () {
+          return db.Machine.find({})
+        })
+        .must.resolve.to.eql([])
+    })
   })
 })
