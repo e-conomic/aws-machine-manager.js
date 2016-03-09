@@ -273,5 +273,16 @@ describe("lib/machines", function () {
             .must.resolve.to.true()
         })
     })
+
+    it("should respect deleted machine", function () {
+      return db.Machine.insert([{name: "foo"}])
+        .then(function () {
+          return db.Machine.remove({name: "foo"})
+        })
+        .then(function () {
+          return M.machineExists("foo")
+        })
+        .must.resolve.to.false()
+    })
   })
 })

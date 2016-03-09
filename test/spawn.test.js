@@ -117,67 +117,24 @@ describe("lib/spawn", function () {
         }])
       })
 
-      it("should use existing machine", function () {
+      it("should reject", function () {
         return M.spawn({name: "exists"})
+          .must.reject.with.error()
+      })
+
+      it("should not terminate instance", function () {
+        return M.spawn({name: "exists"})
+          .catch(function () {
+            sinon.assert.notCalled(stubs.terminateInstances)
+          })
+      })
+
+      it("should spawn after deleting existing", function () {
+        return db.Machine.remove({name: "exists"})
+          .then(function () {
+            return M.spawn({name: "exists"})
+          })
           .must.resolve.to.object()
-      })
-
-      it("should terminate instance", function () {
-        return M.spawn({name: "exists"})
-          .then(function () {
-            sinon.assert.calledOnce(stubs.terminateInstances)
-          })
-      })
-
-      it("should set keyname", function () {
-        M.settings.ec2.keyName = "keyName"
-        return M.spawn({name: "exists"})
-          .then(function () {
-            sinon.assert.calledWithMatch(stubs.runInstances,
-                                         {KeyName: "keyName"})
-          })
-      })
-
-      it("should support missing instance", function () {
-        awsStub(stubs.terminateInstances, new Error())
-        return M.spawn({name: "exists"})
-          .then(function (obj) {
-            return obj
-          })
-          .must.resolve.to.have.property("instanceId", "i-e403955c")
-      })
-
-      it("should update instanceId", function () {
-        return M.spawn({name: "exists"})
-          .then(function () {
-            return db.Machine.findOne({name: "exists"})
-              .then(function (obj) {
-                return obj
-              })
-          })
-          .must.resolve.to.have.property("instanceId", "i-e403955c")
-      })
-
-      it("should update reservationId", function () {
-        return M.spawn({name: "exists"})
-          .then(function () {
-            return db.Machine.findOne({name: "exists"})
-              .then(function (obj) {
-                return obj
-              })
-          })
-          .must.resolve.to.have.property("reservationId", "r-a61a8a0b")
-      })
-
-      it("should set extra data", function () {
-        return M.spawn({name: "exists", extra: {ham: "spam"}})
-          .then(function () {
-            return db.Machine.findOne({name: "exists"})
-              .then(function (obj) {
-                return obj.extra
-              })
-          })
-          .must.resolve.to.eql({ham: "spam"})
       })
     })
   })

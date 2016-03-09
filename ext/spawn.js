@@ -11,25 +11,16 @@ var Manager = module.exports
 
 Manager.spawn = function (opts, userData) {
   var self = this
-  var created = false
   opts = opts || {}
 
-  return self.getMachine(opts.name)
-    .then(function (obj) {
-            var args = {InstanceIds: [obj.instanceId]}
-            return self.ec2.terminateInstances(args).promise()
-              .then(function () { return obj },
-                    function (err) { return obj })
-          },
-          function (err) {
-            if (err instanceof exc.NotFoundError)
-              return newMachine(self.db, opts)
-                .then(function () {
-                  created = true
-                  return self.getMachine(opts.name)
-                })
-            throw err
-          })
+  return self.machineExists(opts.name)
+    .then(function (exists) {
+      if (exists) throw new Error("Machine " + opts.name + " already exists")
+      return newMachine(self.db, opts)
+        .then(function () {
+          return self.getMachine(opts.name)
+        })
+    })
     .then(function (obj) {
       return Q.fcall(function () {
           var uData = userData || self.settings.ec2.userData
@@ -55,11 +46,10 @@ Manager.spawn = function (opts, userData) {
           return spawnInstance(self.ec2, opts.name, payload,
                                self.settings.retry)
             .catch(function (err) {
-              if (created) return obj.remove()
+              return obj.remove()
                 .then(function () {
                   throw err
                 })
-              throw err
             })
             .then(function (res) {
               var reservation = res.data.Reservations[0]

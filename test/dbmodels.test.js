@@ -31,7 +31,7 @@ describe("lib/machines", function () {
         .then(function () {
           return db.Machine.findSingle({instanceId: "spam"})
         })
-      .must.reject.with.error()
+        .must.reject.with.error()
     })
   })
 })
