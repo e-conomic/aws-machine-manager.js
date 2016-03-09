@@ -43,16 +43,21 @@ Manager.stopInstance = function (name) {
 Manager.terminate = function (name, opts) {
   opts = opts || {}
   var self = this
-  return self.getMachine(name)
-    .then(function (obj) {
-      return self.ec2.terminateInstances({InstanceIds: [obj.instanceId]})
-        .promise()
-        .catch(function (err) {
-          if (opts.strict === false) return
-          throw err
-        })
-        .then(function () {
-          return obj.remove()
-        })
+
+  var term = function (doc) {
+    return self.ec2.terminateInstances({InstanceIds: [doc.instanceId]})
+      .promise()
+      .catch(function (err) {
+        if (opts.strict === false) return
+        throw err
+      })
+      .then(function () {
+        return doc.remove()
+      })
+  }
+
+  return this.db.Machine.find({name: name})
+    .then(function (docs) {
+      return Q.all(docs.map(term))
     })
 }
