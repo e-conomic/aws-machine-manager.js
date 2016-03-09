@@ -24,7 +24,7 @@ Manager.getAllMachines = function (opts) {
 Manager.getMachine = function (name) {
   var self = this
   if (!name) return Q.reject(new Error("No name specified"))
-  return this.db.Machine.findOne({name: name})
+  return this.db.Machine.findSingle({name: name})
     .then(function (obj) {
       if (!obj) throw new exc.NotFoundError(
         s("No machine named %s", name))
@@ -39,7 +39,7 @@ Manager.getMachine = function (name) {
 Manager.getMachineById = function (id) {
   var self = this
   if (!id) return Q.reject(new Error("No id specified"))
-  return this.db.Machine.findOne({_id: id})
+  return this.db.Machine.findSingle({_id: id})
     .then(function (obj) {
       if (!obj) throw new exc.NotFoundError(
         s("No machine with id %s", id))
