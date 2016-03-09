@@ -1,6 +1,6 @@
 {
   "name": "aws-machine-manager.js",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "main": "index.js",
   "author": "Jon Lauridsen",
   "scripts": {
