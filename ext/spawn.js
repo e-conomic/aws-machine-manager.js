@@ -30,15 +30,6 @@ Manager.spawn = function (opts, userData) {
                 })
             throw err
           })
-    .catch(function (err) {
-      if (err instanceof exc.NotFoundError)
-        return newMachine(self.db, opts)
-          .then(function () {
-            created = true
-            return self.getMachine(opts.name)
-          })
-      throw err
-    })
     .then(function (obj) {
       return Q.fcall(function () {
           var uData = userData || self.settings.ec2.userData
