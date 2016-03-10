@@ -13,13 +13,9 @@ Manager.spawn = function (opts, userData) {
   var self = this
   opts = opts || {}
 
-  return self.machineExists(opts.name)
-    .then(function (exists) {
-      if (exists) throw new Error("Machine " + opts.name + " already exists")
-      return newMachine(self.db, opts)
-        .then(function () {
-          return self.getMachine(opts.name)
-        })
+  return Q.when(new self.db.Machine(opts))
+    .then(function () {
+      return self.getMachine(opts.name)
     })
     .then(function (obj) {
       return Q.fcall(function () {
@@ -61,8 +57,14 @@ Manager.spawn = function (opts, userData) {
               if (opts.extra) data.extra = opts.extra
               return obj.update(data)
                 .then(function () {
-                  return self.getMachine(opts.name)
-                })
+                        return self.getMachine(opts.name)
+                      },
+                      function (err) {
+                        return obj.remove()
+                          .then(function () {
+                            throw err
+                          })
+                      })
             })
         })
     })
@@ -114,12 +116,5 @@ var retrySetName = function (ec2, instanceId, tags, delay, retries) {
     })
     .then(function (res) {
       return res.data
-    })
-}
-
-var newMachine = function (db, opts) {
-  return Q.when(new db.Machine(opts))
-    .then(function (machine) {
-      return machine.save()
     })
 }
