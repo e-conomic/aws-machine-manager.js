@@ -13,7 +13,21 @@ Manager.spawn = function (opts, userData) {
   var self = this
   opts = opts || {}
 
-  return Q.when(new self.db.Machine(opts))
+  return self.machineExists(opts.name)
+    .then(function (exists) {
+      if (exists) throw new Error("Machine " + opts.name + "already exists")
+    })
+    .thenResolve(new self.db.Machine(opts))
+    .then(function (obj) {
+      return self.machineExists(opts.name)
+        .then(function (exists) {
+          if (exists) console.log(
+            "Machine " + opts.name + " exists without saving")
+          if (!exists)
+            return obj.save() // Necessary for mockgoose, but maybe not
+                              // mongoose???
+        })
+    })
     .then(function () {
       return self.getMachine(opts.name)
     })
