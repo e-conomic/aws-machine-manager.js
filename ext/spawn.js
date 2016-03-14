@@ -15,7 +15,7 @@ Manager.spawn = function (opts, userData) {
 
   return self.machineExists(opts.name)
     .then(function (exists) {
-      if (exists) throw new Error("Machine " + opts.name + "already exists")
+      if (exists) throw new Error("Machine " + opts.name + " already exists")
     })
     .thenResolve(new self.db.Machine(opts))
     .then(function (obj) {
