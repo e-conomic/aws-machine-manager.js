@@ -2,70 +2,73 @@
 require("must")
 var mec2      = require("mocked-ec2.js"),
     mockgoose = require("mockgoose"),
+    Mongoose  = require("mongoose").Mongoose,
     Q         = require("q"),
     sinon     = require("sinon")
-var sshcmd = require("../lib/sshcmd")
+var sshcmdModule = require("../lib/sshcmd")
 var MachineManager = require("../")
 var awsStub   = require("./helpers/aws-stub"),
     fakeClock = require("./helpers/fake-clock")
 
+var mongoose = new Mongoose()
+mockgoose(mongoose)
+
 describe("lib/runcmd", function () {
-  var M, box, db
-  beforeEach(function () {
+  var M, box, sshcmd
+  before(function () {
     box = sinon.sandbox.create()
-    mockgoose(require("mongoose"))
-    M = new MachineManager({ssh: {login: "user"}})
-    db = require("../lib/dbmodels")(require("../lib/dbconnect")("url"))
-    return db.Machine.insert([{name: "foo", "instanceId": "id"}])
+    M = new MachineManager({
+      pem: "pem",
+      mongo: {connection: mongoose},
+      ssh: {login: "user"}
+    })
+    if (M.ec2) M.ec2 = {}
+  })
+
+  beforeEach(function () {
+    M.ec2.describeInstances = awsStub(
+      box.stub(), mec2.describeInstances.singleInstance()
+    )
+    sshcmd = box.stub(sshcmdModule, "eval").returns(Q.resolve("ssh result"))
+    return M.db.Machine.create({name: "foo", "instanceId": "id"})
   })
 
   afterEach(function () {
     box.restore()
-    mockgoose.reset()
+    return M.db.Machine.remove({})
   })
 
-  describe("with running instance", function () {
-    var stub
-    beforeEach(function () {
-      if(M.ec2) M.ec2 = {
-        describeInstances: awsStub(
-          box.stub(), mec2.describeInstances.singleInstance()
-        )
-      }
-      stub = box.stub(sshcmd, "eval").returns(Q.resolve("ssh result"))
-    })
+  after(function (done) {
+    M.close(done)
+  })
 
-    it("should call sshcmd", function () {
-      return M.runcmd("foo", "cmd", {privateKey: "pem"})
-        .then(function () {
-          sinon.assert.calledOnce(stub)
-          sinon.assert.calledWith(
-            stub, "cmd", {
-              login: "user",
-              port: 22,
-              privateKey: "pem",
-              url: sinon.match.string
-            })
-        })
-    })
+  it("should call sshcmd", function () {
+    return M.runcmd("foo", "cmd", {privateKey: "pem"})
+      .then(function () {
+        sinon.assert.calledOnce(sshcmd)
+        sinon.assert.calledWith(
+          sshcmd, "cmd", {
+            login: "user",
+            port: 22,
+            privateKey: "pem",
+            url: sinon.match.string
+          })
+      })
+  })
 
-    it("should resolve to ssh output", function () {
-      return M.runcmd("foo", "cmd", {privateKey: "pem"})
-        .must.resolve.to.eql("ssh result")
-    })
+  it("should resolve to ssh output", function () {
+    return M.runcmd("foo", "cmd", {privateKey: "pem"})
+      .must.resolve.to.eql("ssh result")
   })
 
   describe("with fake timer", function () {
-    var clock, stub
+    var clock
     beforeEach(function () {
-      clock = fakeClock(5000)
-      if(M.ec2) M.ec2 = {
-        describeInstances: awsStub(
-          box.stub(), mec2.describeInstances.stoppedInstance()),
-        startInstances: awsStub(
-          box.stub(), mec2.startInstances.stoppedInstance())
-      }
-      stub = box.stub(sshcmd, "eval").returns(Q.resolve("ssh result"))
+      clock = fakeClock(1000)
+      M.ec2.describeInstances = awsStub(
+        box.stub(), mec2.describeInstances.stoppedInstance())
+      M.ec2.startInstances = awsStub(
+        box.stub(), mec2.startInstances.stoppedInstance())
     })
 
     afterEach(function () {
@@ -73,16 +76,16 @@ describe("lib/runcmd", function () {
     })
 
     it("should retry if it fails", function () {
-      stub.onCall(0).returns(Q.reject(new Error()))
-      stub.onCall(1).returns(Q.resolve("ssh result"))
+      sshcmd.onCall(0).returns(Q.reject(new Error()))
+      sshcmd.onCall(1).returns(Q.resolve("ssh result"))
       return M.runcmd("foo", "cmd", {privateKey: "pem"})
         .then(function () {
-          sinon.assert.calledTwice(stub)
+          sinon.assert.calledTwice(sshcmd)
         })
     })
 
     it("should eventually fail", function () {
-      stub.returns(Q.reject(new Error()))
+      sshcmd.returns(Q.reject(new Error()))
       return M.runcmd("foo", "cmd", {privateKey: "pem"})
         .must.reject.with.error()
     })

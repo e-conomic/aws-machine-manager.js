@@ -55,11 +55,11 @@ Manager.updateMachine = function (name, opts) {
   var self = this
   return self.getMachine(name)
     .then(function (obj) {
-      opts._updated = new Date()
-      return obj.update(opts, {runValidators: true})
-        .then(function () {
-          return self.getMachineById(obj.id)
-        })
+      // load-modify-save pattern instead of updating, to invoke validation
+      Object.keys(opts).forEach(function (key) {
+        obj[key] = opts[key]
+      })
+      return obj.save()
     })
 }
 
@@ -72,7 +72,7 @@ Manager.machineExists = function (name) {
 
 var enhanceObj = function (ec2, obj) {
   obj.getReservations = function () {
-    if(!obj.instanceId) throw new exc.InstanceError("No instanceId")
+    if (!obj.instanceId) throw new exc.InstanceError("No instanceId")
     return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
       .then(function (body) {
         return body.data.Reservations

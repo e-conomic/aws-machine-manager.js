@@ -2,52 +2,54 @@
 require("must")
 var mec2      = require("mocked-ec2.js"),
     mockgoose = require("mockgoose"),
+    Mongoose  = require("mongoose").Mongoose,
     sinon     = require("sinon")
 var exc = require("../lib/exceptions")
 var MachineManager = require("../")
-var awsStub   = require("./helpers/aws-stub"),
-    fakeClock = require("./helpers/fake-clock")
+var awsStub = require("./helpers/aws-stub")
+
+var mongoose = new Mongoose()
+mockgoose(mongoose)
 
 describe("lib/spawn", function () {
-  var db, box, clock
-  beforeEach(function () {
+  var M, box
+  before(function () {
     box = sinon.sandbox.create()
-    clock = fakeClock(5000)
-    mockgoose(require("mongoose"))
-    db = require("../lib/dbmodels")(require("../lib/dbconnect")("url"))
+    M =
+      new MachineManager({
+        pem: "pem",
+        mongo: {connection: mongoose},
+        retry: {count:5, delay: 1}
+      })
+    if (M.ec2) M.ec2 = {}
   })
 
   afterEach(function () {
     box.restore()
-    clock.restore()
-    mockgoose.reset()
+    return M.db.Machine.remove({})
+  })
+
+  after(function (done) {
+    M.close(done)
   })
 
   describe("#spawn", function () {
-    var M, stubs
     beforeEach(function () {
-      stubs = {
-        createTags: box.stub(), describeInstances: box.stub(),
-        runInstances: box.stub(), terminateInstances: box.stub()
-      }
-      M = new MachineManager()
-      if (M.ec2) M.ec2 = {
-        createTags: awsStub(
-          stubs.createTags, mec2.createTags()),
-        describeInstances: awsStub(
-          stubs.describeInstances, mec2.describeInstances.singleInstance()),
-        runInstances: awsStub(
-          stubs.runInstances, mec2.runInstances.econSpawnerMachine()),
-        terminateInstances: awsStub(
-          stubs.terminateInstances, mec2.terminateInstances.spawnedMachine()
-        )
-      }
+      M.ec2.createTags = awsStub(
+        box.stub(), mec2.createTags())
+      M.ec2.describeInstances = awsStub(
+        box.stub(), mec2.describeInstances.singleInstance())
+      M.ec2.runInstances = awsStub(
+        box.stub(), mec2.runInstances.econSpawnerMachine())
+      M.ec2.terminateInstances = awsStub(
+        box.stub(), mec2.terminateInstances.spawnedMachine()
+      )
     })
 
     it("should create new db entry", function () {
       return M.spawn({name: "foo"})
         .then(function () {
-          return db.Machine.findOne({name: "foo"})
+          return M.db.Machine.findOne({name: "foo"})
         })
         .must.resolve.to.have.property("name", "foo")
     })
@@ -55,18 +57,15 @@ describe("lib/spawn", function () {
     it("should call expected endpoints", function () {
       return M.spawn({name: "foo"})
         .then(function () {
-          sinon.assert.calledOnce(stubs.runInstances)
-          sinon.assert.calledOnce(stubs.createTags)
+          sinon.assert.calledOnce(M.ec2.runInstances)
+          sinon.assert.calledOnce(M.ec2.createTags)
         })
     })
 
     it("should set instanceId", function () {
       return M.spawn({name: "foo"})
         .then(function () {
-          return db.Machine.findOne({name: "foo"})
-            .then(function (obj) {
-              return obj
-            })
+          return M.db.Machine.findOne({name: "foo"})
         })
         .must.resolve.to.have.property("instanceId", "i-e403955c")
     })
@@ -74,10 +73,7 @@ describe("lib/spawn", function () {
     it("should set reservationId", function () {
       return M.spawn({name: "foo"})
         .then(function () {
-          return db.Machine.findOne({name: "foo"})
-            .then(function (obj) {
-              return obj
-            })
+          return M.db.Machine.findOne({name: "foo"})
         })
         .must.resolve.to.have.property("reservationId", "r-a61a8a0b")
     })
@@ -85,7 +81,7 @@ describe("lib/spawn", function () {
     it("should tag the instance", function () {
       return M.spawn({name: "foo"})
         .then(function () {
-          sinon.assert.calledWith(stubs.createTags, {
+          sinon.assert.calledWith(M.ec2.createTags, {
             Resources: [sinon.match.string],
             Tags: [
               {Key: "Name", Value: "foo"},
@@ -95,26 +91,27 @@ describe("lib/spawn", function () {
     })
 
     it("should retry tags if it initially fails", function () {
-      awsStub(stubs.createTags, new Error(), mec2.createTags())
+      awsStub(M.ec2.createTags, new Error(), mec2.createTags())
       return M.spawn({name: "foo"})
         .then(function () {
-          sinon.assert.calledTwice(stubs.createTags)
+          sinon.assert.calledTwice(M.ec2.createTags)
         })
     })
 
     it("should eventually give up retrying", function () {
-      stubs.createTags.resetBehavior()
-      awsStub(stubs.createTags, new Error())
+      M.ec2.createTags.resetBehavior()
+      awsStub(M.ec2.createTags, new Error())
       return M.spawn({name: "foo"})
         .must.reject.to.instanceof(exc.MaxRetriesError)
     })
 
     describe("with existing machine", function () {
       beforeEach(function () {
-        return db.Machine.insert([{
-          name: "exists", aws: {instanceId: "foo"},
-          extra: {foo: "bar"}
-        }])
+        return M.db.Machine.create(
+          {
+            name: "exists", aws: {instanceId: "foo"},
+            extra: {foo: "bar"}
+          })
       })
 
       it("should reject", function () {
@@ -125,12 +122,12 @@ describe("lib/spawn", function () {
       it("should not terminate instance", function () {
         return M.spawn({name: "exists"})
           .catch(function () {
-            sinon.assert.notCalled(stubs.terminateInstances)
+            sinon.assert.notCalled(M.ec2.terminateInstances)
           })
       })
 
       it("should spawn after deleting existing", function () {
-        return db.Machine.remove({name: "exists"})
+        return M.db.Machine.remove({name: "exists"})
           .then(function () {
             return M.spawn({name: "exists"})
           })
