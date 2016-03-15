@@ -3,7 +3,6 @@ env:
   - CXX=g++-4.8
 node_js:
   - "stable"
-  - "iojs"
   - "0.12"
 addons:
   apt:
