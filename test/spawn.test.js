@@ -85,7 +85,8 @@ describe("lib/spawn", function () {
             Resources: [sinon.match.string],
             Tags: [
               {Key: "Name", Value: "foo"},
-              {Key: "SpawnedBy", Value: "aws-machine-manager"}]
+              {Key: "SpawnedBy", Value: "aws-machine-manager"},
+              {Key: "Env", Value: "development"}]
           })
         })
     })

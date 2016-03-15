@@ -91,7 +91,11 @@ var spawnInstance = function (ec2, name, payload, retry) {
         .then(function () {
           var instance = res.data.Instances[0]
           return retrySetName(ec2, instance.InstanceId,
-                              {Name: name, SpawnedBy: "aws-machine-manager"},
+                              {
+                                Name: name,
+                                SpawnedBy: "aws-machine-manager",
+                                Env: process.env.NODE_ENV || "development"
+                              },
                               retry.delay, retry.count)
             .catch(function (err) {
               if (err instanceof exc.MaxRetriesError)
