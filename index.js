@@ -1,7 +1,6 @@
 "use strict";
-var aws          = require("aws-sdk-promise"),
-    EventEmitter = require("events").EventEmitter,
-    Q            = require("q")
+var aws = require("aws-sdk-promise"),
+    Q   = require("q")
 var dbconnect   = require("./lib/dbconnect"),
     dbmodels    = require("./lib/dbmodels"),
     exceptions  = require("./lib/exceptions"),
@@ -9,10 +8,13 @@ var dbconnect   = require("./lib/dbconnect"),
 
 aws.Promise = Q.Promise
 
-var emitter = new EventEmitter()
-
 var Manager = function (opts) {
   this.settings = getSettings(opts)
+  this._mongoose = this.settings.mongo.connection
+  if (!this._mongoose) {
+    var Mongoose = require("mongoose").Mongoose
+    this._mongoose = new Mongoose()
+  }
 
   Object.defineProperty(this, "ec2", {
     get: function () {
@@ -32,8 +34,12 @@ var Manager = function (opts) {
   Object.defineProperty(this, "db", {
     get: function () {
       var self = this
-      if (!this._db) this._db = dbmodels(dbconnect(self.settings.mongo.url,
-                                                   self.settings.mongo.options))
+      if (!this._db) {
+        dbmodels(self._mongoose)
+        dbconnect(self._mongoose, self.settings.mongo.url,
+                  self.settings.mongo.options)
+        this._db = {Machine: self._mongoose.model("Machine")}
+      }
       return this._db
     },
     set: function (val) {
@@ -42,8 +48,9 @@ var Manager = function (opts) {
   })
 }
 
-Manager.prototype.on = {spawn: function (fn) { emitter.on("spawn", fn) }}
-Manager.prototype.emit = emitter.emit.bind(emitter)
+Manager.prototype.close = function (cb) {
+  return this._mongoose.connection.close(cb)
+}
 
 Manager.prototype.exceptions = exceptions
 
