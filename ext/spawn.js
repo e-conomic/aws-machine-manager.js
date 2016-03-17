@@ -123,4 +123,3 @@ var spawnInstance = function (ec2, name, payload, retry) {
         })
     })
 }
-

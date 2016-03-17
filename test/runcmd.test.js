@@ -25,14 +25,6 @@ describe("lib/runcmd", function () {
     if (M.ec2) M.ec2 = {}
   })
 
-  beforeEach(function () {
-    M.ec2.describeInstances = awsStub(
-      box.stub(), mec2.describeInstances.singleInstance()
-    )
-    sshcmd = box.stub(sshcmdModule, "eval").returns(Q.resolve("ssh result"))
-    return M.db.Machine.create({name: "foo", "instanceId": "id"})
-  })
-
   afterEach(function () {
     box.restore()
     return M.db.Machine.remove({})
@@ -42,52 +34,62 @@ describe("lib/runcmd", function () {
     M.close(done)
   })
 
-  it("should call sshcmd", function () {
-    return M.runcmd("foo", "cmd", {privateKey: "pem"})
-      .then(function () {
-        sinon.assert.calledOnce(sshcmd)
-        sinon.assert.calledWith(
-          sshcmd, "cmd", {
-            login: "user",
-            port: 22,
-            privateKey: "pem",
-            url: sinon.match.string
-          })
-      })
-  })
-
-  it("should resolve to ssh output", function () {
-    return M.runcmd("foo", "cmd", {privateKey: "pem"})
-      .must.resolve.to.eql("ssh result")
-  })
-
-  describe("with fake timer", function () {
-    var clock
+  describe("with fake sshcmd", function () {
     beforeEach(function () {
-      clock = fakeClock(1000)
       M.ec2.describeInstances = awsStub(
-        box.stub(), mec2.describeInstances.stoppedInstance())
-      M.ec2.startInstances = awsStub(
-        box.stub(), mec2.startInstances.stoppedInstance())
+        box.stub(), mec2.describeInstances.singleInstance())
+      sshcmd = box.stub(sshcmdModule, "eval").returns(Q.resolve("ssh result"))
+      return M.db.Machine.create({name: "foo", "instanceId": "id"})
     })
 
-    afterEach(function () {
-      clock.restore()
-    })
-
-    it("should retry if it fails", function () {
-      sshcmd.onCall(0).returns(Q.reject(new Error()))
-      sshcmd.onCall(1).returns(Q.resolve("ssh result"))
+    it("should call sshcmd", function () {
       return M.runcmd("foo", "cmd", {privateKey: "pem"})
         .then(function () {
-          sinon.assert.calledTwice(sshcmd)
+          sinon.assert.calledOnce(sshcmd)
+          sinon.assert.calledWith(
+            sshcmd, "cmd", {
+              login: "user",
+              port: 22,
+              privateKey: "pem",
+              url: sinon.match.string,
+              debugprogress: false
+            })
         })
     })
 
-    it("should eventually fail", function () {
-      sshcmd.returns(Q.reject(new Error()))
+    it("should resolve to ssh output", function () {
       return M.runcmd("foo", "cmd", {privateKey: "pem"})
-        .must.reject.with.error()
+        .must.resolve.to.eql("ssh result")
+    })
+
+    describe("with fake timer", function () {
+      var clock
+      beforeEach(function () {
+        clock = fakeClock(1000)
+        M.ec2.describeInstances = awsStub(
+          box.stub(), mec2.describeInstances.stoppedInstance())
+        M.ec2.startInstances = awsStub(
+          box.stub(), mec2.startInstances.stoppedInstance())
+      })
+
+      afterEach(function () {
+        clock.restore()
+      })
+
+      it("should retry if it fails", function () {
+        sshcmd.onCall(0).returns(Q.reject(new Error()))
+        sshcmd.onCall(1).returns(Q.resolve("ssh result"))
+        return M.runcmd("foo", "cmd", {privateKey: "pem"})
+          .then(function () {
+            sinon.assert.calledTwice(sshcmd)
+          })
+      })
+
+      it("should eventually fail", function () {
+        sshcmd.returns(Q.reject(new Error()))
+        return M.runcmd("foo", "cmd", {privateKey: "pem"})
+          .must.reject.with.error()
+      })
     })
   })
 })
