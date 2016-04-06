@@ -57,16 +57,7 @@ Manager.updateMachine = function (name, opts) {
     .then(function (obj) {
       // load-modify-save pattern instead of updating, to invoke validation
       Object.keys(opts).forEach(function (key) {
-        // Only supports two dimensional objects at this point in time, I can't figure out a way to do it dynamically in a nice way
-        var keyPath = key.split('.')
-        if (keyPath.length == 1) {
-          obj[key] = opts[key]
-        } 
-        else {
-          obj[keyPath[0]][keyPath[1]] = opts[key]
-        }
-
-        obj.markModified(key);
+        obj[key] = opts[key]
       })
       return obj.save()
     })
