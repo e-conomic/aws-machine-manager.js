@@ -59,6 +59,8 @@ Manager.updateMachine = function (name, opts) {
       Object.keys(opts).forEach(function (key) {
         obj[key] = opts[key]
       })
+      // Need to explicitly mark the extra field as modified since it's mixed schema and mongoose won't track that
+      obj.markModified("extra")
       return obj.save()
     })
 }
