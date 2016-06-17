@@ -90,7 +90,7 @@ var enhanceObj = function (ec2, obj) {
           })
       }
       else {
-        return machineCache[obj.instanceId].reservations
+        return machineCache[obj.instanceId].reservations.promise()
       }
     }
     else {
