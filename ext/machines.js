@@ -79,14 +79,15 @@ var enhanceObj = function (ec2, obj) {
     if (!obj.instanceId) throw new exc.InstanceError("No instanceId")
     if (machineCache[obj.instanceId]) {
       if (Date.now() - machineCache[obj.instanceId].reservationTimestamp > 180000) {
-        return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
-          .then(function (body) {
+        
             machineCache[obj.instanceId] = { 
-              "reservationTimestamp": Date.now(),
-              "reservations": body.data.Reservations
+              reservationTimestamp: Date.now(),
+              reservations: ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+                .then(function (body) {
+                  return body.data.Reservations
+                })
             }
-            return body.data.Reservations
-          })
+        return machineCache[obj.instanceId].reservations
       }
       else {
         return machineCache[obj.instanceId].reservations
@@ -96,10 +97,13 @@ var enhanceObj = function (ec2, obj) {
       return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
         .then(function (body) {
           machineCache[obj.instanceId] = { 
-            "reservationTimestamp": Date.now(),
-            "reservations": body.data.Reservations
+            reservationTimestamp: Date.now(),
+            reservations: ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+              .then(function (body) {
+                return body.data.Reservations
+              })
           }
-          return body.data.Reservations
+          return machineCache[obj.instanceId].reservations
         })
     }
   }
