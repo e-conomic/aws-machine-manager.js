@@ -152,7 +152,26 @@ var enhanceObj = function (ec2, obj) {
   }
 
   obj.getStatus = function () {
-        return ec2.describeInstanceStatus({InstanceIds: [obj.instanceId]})
+    if (machineCache[obj.instanceId]) {
+      if (Date.now() - machineCache[obj.instanceId].reservationTimestamp > 180000) {
+        machineCache[obj.instanceId] = {
+          statusTimestamp: Date.now(),
+          instanceStatus: ec2.describeInstanceStatus({InstanceIds: [obj.instanceId]})
           .promise()
+        }
+        return machineCache[obj.instanceId].instanceStatus
+      }
+      else {
+        return machineCache[obj.instanceId].instanceStatus
+      }
+    }
+    else {
+        machineCache[obj.instanceId] = {
+          statusTimestamp: Date.now(),
+          instanceStatus: ec2.describeInstanceStatus({InstanceIds: [obj.instanceId]})
+          .promise()
+        }
+        return machineCache[obj.instanceId].instanceStatus
+    }
   }
 }
