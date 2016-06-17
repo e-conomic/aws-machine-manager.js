@@ -81,8 +81,11 @@ var enhanceObj = function (ec2, obj) {
       if (Date.now() - machineCache[obj.instanceId].reservationTimestamp > 180000) {
         
             machineCache[obj.instanceId] = { 
-              "reservationTimestamp": Date.now(),
-              "reservations": Q(body.data.Reservations)
+              reservationTimestamp: Date.now(),
+              reservations: ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+                .then(function (body) {
+                  return body.data.Reservations
+                })
             }
         return machineCache[obj.instanceId].reservations
       }
@@ -94,8 +97,11 @@ var enhanceObj = function (ec2, obj) {
       return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
         .then(function (body) {
           machineCache[obj.instanceId] = { 
-            "reservationTimestamp": Date.now(),
-            "reservations": Q(body.data.Reservations)
+            reservationTimestamp: Date.now(),
+            reservations: ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+              .then(function (body) {
+                return body.data.Reservations
+              })
           }
           return machineCache[obj.instanceId].reservations
         })
