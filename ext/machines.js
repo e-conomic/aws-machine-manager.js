@@ -6,6 +6,8 @@ var exc = require("../lib/exceptions")
 
 validate.Promise = Q.Promise
 
+var machineCache = {}
+
 var Manager = module.exports
 
 Manager.getAllMachines = function (opts) {
@@ -75,10 +77,31 @@ Manager.machineExists = function (name) {
 var enhanceObj = function (ec2, obj) {
   obj.getReservations = function () {
     if (!obj.instanceId) throw new exc.InstanceError("No instanceId")
-    return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
-      .then(function (body) {
-        return body.data.Reservations
-      })
+    if (machineCache[obj.instanceId]) {
+      if (Date.now() - machineCache[obj.instanceId].reservationTimestamp > 180000) {
+        return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+          .then(function (body) {
+            machineCache[obj.instanceId] = { 
+              "reservationTimestamp": Date.now(),
+              "reservations": body.data.Reservations
+            }
+            return body.data.Reservations
+          })
+      }
+      else {
+        return machineCache[obj.instanceId].reservations
+      }
+    }
+    else {
+      return ec2.describeInstances({InstanceIds: [obj.instanceId]}).promise()
+        .then(function (body) {
+          machineCache[obj.instanceId] = { 
+            "reservationTimestamp": Date.now(),
+            "reservations": body.data.Reservations
+          }
+          return body.data.Reservations
+        })
+    }
   }
 
   obj.getReservation = function () {
@@ -125,7 +148,7 @@ var enhanceObj = function (ec2, obj) {
   }
 
   obj.getStatus = function () {
-    return ec2.describeInstanceStatus({InstanceIds: [obj.instanceId]})
-      .promise()
+        return ec2.describeInstanceStatus({InstanceIds: [obj.instanceId]})
+          .promise()
   }
 }
